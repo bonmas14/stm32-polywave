@@ -2,4 +2,4 @@ bin/
 *.elf
 *.bin
 generated.*.ld
-.cache/
+polywave/.cache/
