@@ -3,6 +3,6 @@ bin/
 *.bin
 *.json
 generated.*.ld
-polywave/.cache/
+.cache/
 
 
