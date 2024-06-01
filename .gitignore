@@ -1,5 +1,8 @@
 bin/
 *.elf
 *.bin
+*.json
 generated.*.ld
 polywave/.cache/
+
+
