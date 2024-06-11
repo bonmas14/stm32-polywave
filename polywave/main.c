@@ -6,7 +6,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/timer.h>
 
-#define FREQ_ARR 255
+#define FREQ_ARR 127
 
 #define BUFF_SIZE 512
 
@@ -19,7 +19,7 @@ uint8_t buffer[BUFF_SIZE];
 
 int main(void) {
     for (size_t i = 0; i < BUFF_SIZE; i++) {
-        buffer[i] = i / 2;
+        buffer[i] = i / 4;
     }
 
     init_mcu();
@@ -57,11 +57,11 @@ void init_timers(void) {
     // pwm
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_TIM3_CH1);
 
-    TIM3_CR1 = TIM_CR1_CKD_CK_INT | TIM_CR1_CMS_EDGE;
+    TIM3_CR1 = TIM_CR1_CKD_CK_INT_MUL_2 | TIM_CR1_CMS_EDGE;
     TIM3_CNT = 0;
     TIM3_ARR = FREQ_ARR; 
     TIM3_PSC = 0; 
-    TIM3_CCR1 = 127;
+    TIM3_CCR1 = 63;
 
     TIM3_EGR = TIM_EGR_UG;
 
@@ -75,7 +75,7 @@ void init_timers(void) {
 }
 
 void tim2_isr(void) {
-    TIM3_CCR1 = buffer[buff_index++];
+    TIM3_CCR1 = buffer[buff_index++] / 2;
 
     if (buff_index >= BUFF_SIZE)
         buff_index = 0;
