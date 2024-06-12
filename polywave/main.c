@@ -6,7 +6,9 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/timer.h>
 
+#include "logo.h"
 #include "sound.h"
+#include "oled.h"
 
 #define PWM_ARR 255 // 255 = ~250khz 127 = ~600khz
 #define PWM_IDLE (PWM_ARR / 2)
@@ -18,8 +20,11 @@
 
 void init_mcu(void);
 void init_timers(void);
+void run_timers(void);
 
 uint64_t sample_time = 0;
+
+size_t current_page = 0;
 
 size_t read_index = 0;
 bool sample_filled = false;
@@ -30,7 +35,16 @@ uint8_t sync_buffer[BUFF_SIZE];
 int main(void) {
     init_mcu();
 
-    TIM2_CR1 |= TIM_CR1_CEN;
+    oled_set_pixel(0, 0, 1);
+    oled_set_pixel(1, 1, 1);
+    oled_set_pixel(2, 2, 1);
+    oled_set_pixel(3, 3, 1);
+    oled_set_pixel(4, 4, 1);
+    oled_set_pixel(5, 5, 1);
+
+    oled_write_rle(logo_rle);
+
+    oled_update();
 
     while (1) {
         if (sample_filled) {
@@ -48,21 +62,32 @@ int main(void) {
     }
 }
 
+void run_timers(void) {
+    TIM2_CR1 |= TIM_CR1_CEN;
+    TIM3_CR1 |= TIM_CR1_CEN; 
+
+    nvic_enable_irq(NVIC_TIM2_IRQ);
+    nvic_set_priority(NVIC_TIM2_IRQ, 1);
+
+    nvic_enable_irq(NVIC_TIM4_IRQ);
+    nvic_set_priority(NVIC_TIM4_IRQ, 1);
+}
+
 void init_mcu(void) {
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
 
     rcc_periph_clock_enable(RCC_TIM2);
     rcc_periph_clock_enable(RCC_TIM3);
     rcc_periph_clock_enable(RCC_AFIO);
-    rcc_periph_clock_enable(RCC_GPIOA); 
+    rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOC); 
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
-    nvic_enable_irq(NVIC_TIM2_IRQ);
-    nvic_set_priority(NVIC_TIM2_IRQ, 1);
+    oled_init();
 
     init_timers();
+    run_timers();
 }
 
 void init_timers(void) {
@@ -89,7 +114,6 @@ void init_timers(void) {
     TIM3_CR1 |= TIM_CR1_ARPE;
     TIM3_CR1 &= ~TIM_CR1_OPM;
 
-    TIM3_CR1 |= TIM_CR1_CEN; 
 }
 
 void tim2_isr(void) {
