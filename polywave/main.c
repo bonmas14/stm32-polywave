@@ -24,8 +24,6 @@ void init_mcu(void);
 void init_timers(void);
 void run_timers(void);
 
-uint64_t sample_time = 0;
-
 size_t current_page = 0;
 
 size_t read_index = 0;
@@ -38,19 +36,21 @@ int main(void) {
     init_mcu();
 
     oled_write_rle(logo_rle);
+
     oled_update();
 
+    int32_t freq = 659;
 
     while (1) {
-        uint32_t freq = 659 + encoder_state() * 100;
+        freq += encoder_state();
 
         if (sample_filled) {
             continue;
         }
 
-        for (size_t i = 0; i < BUFF_SIZE; i++, sample_time++) {
-            //sync_buffer[i] = osc_generate(SAW, 523, sample_time) / 3 + osc_generate(SAW, freq, sample_time) / 3 + osc_generate(SAW, 987, sample_time) / 3;
-            sync_buffer[i] = osc_generate(SAW, freq, sample_time);
+        for (size_t i = 0; i < BUFF_SIZE; i++) {
+            sync_buffer[i] = osc_generate(SAW, 523) / 3 + osc_generate(SAW, freq) / 3 + osc_generate(SAW, 987) / 3;
+            osc_tick();
         }
 
         sample_filled = true;
@@ -82,7 +82,9 @@ void init_mcu(void) {
 
     rcc_periph_clock_enable(RCC_AFIO);
 
+    init_timers();
     encoder_init();
+    oled_init();
 
     nvic_enable_irq(NVIC_EXTI0_IRQ);
     nvic_set_priority(NVIC_EXTI0_IRQ, 0);
@@ -93,9 +95,7 @@ void init_mcu(void) {
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
-    oled_init();
 
-    init_timers();
     run_timers();
 }
 

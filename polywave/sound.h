@@ -9,5 +9,5 @@ enum {
     SQUARE
 };
 
-
-uint8_t osc_generate(uint32_t osc_enum, uint32_t freq, uint64_t step);
+void osc_tick(void);
+uint8_t osc_generate(uint32_t osc_enum, int32_t freq);
