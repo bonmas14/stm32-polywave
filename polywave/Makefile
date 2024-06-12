@@ -5,6 +5,7 @@ SHARED_DIR = ../my-common-code
 CFILES = main.c
 CFILES += sound.c
 CFILES += oled.c
+CFILES += encoder.c
 #CFILES += api.c
 
 # TODO - you will need to edit these two lines!

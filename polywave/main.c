@@ -3,12 +3,14 @@
 
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/timer.h>
 
 #include "logo.h"
 #include "sound.h"
 #include "oled.h"
+#include "encoder.h"
 
 #define PWM_ARR 255 // 255 = ~250khz 127 = ~600khz
 #define PWM_IDLE (PWM_ARR / 2)
@@ -35,27 +37,20 @@ uint8_t sync_buffer[BUFF_SIZE];
 int main(void) {
     init_mcu();
 
-    oled_set_pixel(0, 0, 1);
-    oled_set_pixel(1, 1, 1);
-    oled_set_pixel(2, 2, 1);
-    oled_set_pixel(3, 3, 1);
-    oled_set_pixel(4, 4, 1);
-    oled_set_pixel(5, 5, 1);
-
     oled_write_rle(logo_rle);
-
     oled_update();
 
+
     while (1) {
+        uint32_t freq = 659 + encoder_state() * 100;
+
         if (sample_filled) {
-            gpio_set(GPIOC, GPIO13);
             continue;
         }
 
-        gpio_clear(GPIOC, GPIO13);
-
         for (size_t i = 0; i < BUFF_SIZE; i++, sample_time++) {
-            sync_buffer[i] = osc_generate(SAW, 523, sample_time) / 3 + osc_generate(SAW, 659, sample_time) / 3 + osc_generate(SAW, 987, sample_time) / 3;
+            //sync_buffer[i] = osc_generate(SAW, 523, sample_time) / 3 + osc_generate(SAW, freq, sample_time) / 3 + osc_generate(SAW, 987, sample_time) / 3;
+            sync_buffer[i] = osc_generate(SAW, freq, sample_time);
         }
 
         sample_filled = true;
@@ -65,6 +60,7 @@ int main(void) {
 void run_timers(void) {
     TIM2_CR1 |= TIM_CR1_CEN;
     TIM3_CR1 |= TIM_CR1_CEN; 
+
 
     nvic_enable_irq(NVIC_TIM2_IRQ);
     nvic_set_priority(NVIC_TIM2_IRQ, 1);
@@ -76,11 +72,24 @@ void run_timers(void) {
 void init_mcu(void) {
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
 
+    rcc_periph_clock_enable(RCC_I2C1);
     rcc_periph_clock_enable(RCC_TIM2);
     rcc_periph_clock_enable(RCC_TIM3);
-    rcc_periph_clock_enable(RCC_AFIO);
+
     rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_periph_clock_enable(RCC_GPIOB);
     rcc_periph_clock_enable(RCC_GPIOC); 
+
+    rcc_periph_clock_enable(RCC_AFIO);
+
+    encoder_init();
+
+    nvic_enable_irq(NVIC_EXTI0_IRQ);
+    nvic_set_priority(NVIC_EXTI0_IRQ, 0);
+
+    exti_select_source(EXTI0, ENCODER_PORT);
+    exti_set_trigger(EXTI0, EXTI_TRIGGER_BOTH);
+    exti_enable_request(EXTI0);
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 

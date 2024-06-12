@@ -16,10 +16,6 @@ enum ssd1306_ctlbyte {
 void ssd1306_init(void);
 
 void oled_init(void) {
-    rcc_periph_clock_enable(RCC_GPIOB);
-    rcc_periph_clock_enable(RCC_I2C1);
-    rcc_periph_clock_enable(RCC_AFIO);
-
     gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
             GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN, 
             GPIO_I2C1_RE_SCL | GPIO_I2C1_RE_SDA);
