@@ -2,6 +2,8 @@
 #include <stdint.h>
 
 #include <libopencm3/cm3/nvic.h>
+#include <libopencm3/cm3/systick.h>
+
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/gpio.h>
@@ -11,6 +13,7 @@
 #include "sound.h"
 #include "oled.h"
 #include "encoder.h"
+#include "millis.h"
 
 #define PWM_ARR 255 // 255 = ~250khz 127 = ~600khz
 #define PWM_IDLE (PWM_ARR / 2)
@@ -36,20 +39,21 @@ int main(void) {
     init_mcu();
 
     oled_write_rle(logo_rle);
-
     oled_update();
 
-    int32_t freq = 659;
+    int32_t freq = 0;
 
     while (1) {
-        freq += encoder_state();
+        freq += 10 * encoder_state();
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-            sync_buffer[i] = osc_generate(SAW, 523) / 3 + osc_generate(SAW, freq) / 3 + osc_generate(SAW, 987) / 3;
+            //sync_buffer[i] = osc_generate(SAW, 523) / 3 + osc_generate(SAW, freq) / 3 + osc_generate(SAW, 987) / 3;
+            sync_buffer[i] = osc_generate(SAW, freq + 523) / 3 + osc_generate(SAW, freq + 659) / 3 + osc_generate(SAW, freq + 987) / 3;
+            //sync_buffer[i] = osc_generate(SAW, 523) / 2 + osc_generate(SAW, freq) / 2;
             osc_tick();
         }
 
@@ -61,7 +65,6 @@ void run_timers(void) {
     TIM2_CR1 |= TIM_CR1_CEN;
     TIM3_CR1 |= TIM_CR1_CEN; 
 
-
     nvic_enable_irq(NVIC_TIM2_IRQ);
     nvic_set_priority(NVIC_TIM2_IRQ, 1);
 
@@ -71,6 +74,7 @@ void run_timers(void) {
 
 void init_mcu(void) {
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
+    millis_init();
 
     rcc_periph_clock_enable(RCC_I2C1);
     rcc_periph_clock_enable(RCC_TIM2);
@@ -90,11 +94,10 @@ void init_mcu(void) {
     nvic_set_priority(NVIC_EXTI0_IRQ, 0);
 
     exti_select_source(EXTI0, ENCODER_PORT);
-    exti_set_trigger(EXTI0, EXTI_TRIGGER_BOTH);
+    exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
     exti_enable_request(EXTI0);
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
-
 
     run_timers();
 }
