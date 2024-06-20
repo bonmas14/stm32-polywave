@@ -38,8 +38,8 @@ bool sample_filled = false;
 uint8_t output_buffer[BUFF_SIZE];
 uint8_t sync_buffer[BUFF_SIZE];
 
-osc_t base = (osc_t) { .freq = NOTE_C4, .osc_enum = SAW };
-osc_t modulator = (osc_t) { .freq = NOTE_C4, .osc_enum = SAW }; // fm kinda
+osc_t base = (osc_t) { .freq = NOTE_C3, .osc_enum = SAW };
+osc_t modulator = (osc_t) { .osc_enum = SAW };
 
 int main(void) {
     init_mcu();
@@ -51,14 +51,15 @@ int main(void) {
 
     while (1) {
         freq += encoder_state();
+        modulator.freq = NOTE_C1 + freq;
+        base.freq = NOTE_C3 + freq * (1 << 2);
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-
-            base.phase = osc_generate(&modulator) * freq / 100;
+            base.phase = ((int32_t)osc_generate(&modulator) - 127);
 
             uint32_t sample = osc_generate(&base);
             //sample /= 1;
