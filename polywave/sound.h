@@ -9,5 +9,14 @@ enum {
     SQUARE
 };
 
-void osc_tick(void);
-uint8_t osc_generate(uint32_t osc_enum, int32_t freq);
+typedef struct {
+    uint8_t osc_enum;
+
+    uint64_t time;
+
+    uint32_t freq;
+
+    int32_t phase;
+} osc_t;
+
+uint32_t osc_generate(osc_t* osc);

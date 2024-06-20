@@ -14,6 +14,9 @@
 #include "oled.h"
 #include "encoder.h"
 #include "millis.h"
+#include "utils.h"
+
+#include "notes.h"
 
 #define PWM_ARR 255 // 255 = ~250khz 127 = ~600khz
 #define PWM_IDLE (PWM_ARR / 2)
@@ -21,7 +24,7 @@
 #define SAMPLE_ARR 1500
 #define SAMPLE_FREQ (72000000 / SAMPLE_ARR)
 
-#define BUFF_SIZE 512
+#define BUFF_SIZE 128
 
 void init_mcu(void);
 void init_timers(void);
@@ -35,6 +38,9 @@ bool sample_filled = false;
 uint8_t output_buffer[BUFF_SIZE];
 uint8_t sync_buffer[BUFF_SIZE];
 
+osc_t base = (osc_t) { .freq = NOTE_C4, .osc_enum = SAW };
+osc_t modulator = (osc_t) { .freq = NOTE_C4, .osc_enum = SAW }; // fm kinda
+
 int main(void) {
     init_mcu();
 
@@ -44,17 +50,19 @@ int main(void) {
     int32_t freq = 0;
 
     while (1) {
-        freq += 10 * encoder_state();
+        freq += encoder_state();
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-            //sync_buffer[i] = osc_generate(SAW, 523) / 3 + osc_generate(SAW, freq) / 3 + osc_generate(SAW, 987) / 3;
-            sync_buffer[i] = osc_generate(SAW, freq + 523) / 3 + osc_generate(SAW, freq + 659) / 3 + osc_generate(SAW, freq + 987) / 3;
-            //sync_buffer[i] = osc_generate(SAW, 523) / 2 + osc_generate(SAW, freq) / 2;
-            osc_tick();
+
+            base.phase = osc_generate(&modulator) * freq / 100;
+
+            uint32_t sample = osc_generate(&base);
+            //sample /= 1;
+            sync_buffer[i] = max(1, min(sample, 254));
         }
 
         sample_filled = true;

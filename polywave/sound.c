@@ -3,18 +3,18 @@
 #define STEPS_PER_SEC 48000
 #define BIT_DEPTH 8
 
-uint64_t time = 0;
 
-uint8_t osc_saw(uint64_t step);
-void osc_tick(void) {
-    time++;
-}
-uint8_t osc_generate(uint32_t osc_enum, int32_t freq) {
-    uint64_t current_step = (time * freq) % STEPS_PER_SEC;
+uint32_t osc_saw(uint64_t step);
 
-    uint8_t output = 0;
 
-    switch (osc_enum) {
+uint32_t osc_generate(osc_t* osc) {
+
+
+    uint64_t current_step = ((osc->time + osc->phase) * osc->freq) % STEPS_PER_SEC;
+
+    uint32_t output = 0;
+
+    switch (osc->osc_enum) {
         case TRIANGE:
             break;
 
@@ -26,9 +26,11 @@ uint8_t osc_generate(uint32_t osc_enum, int32_t freq) {
             break;
     }
 
+    osc->time += 1;
+
     return output;
 }
 
-uint8_t osc_saw(uint64_t step) {
+uint32_t osc_saw(uint64_t step) {
     return step / (STEPS_PER_SEC / (1 << BIT_DEPTH));
 }

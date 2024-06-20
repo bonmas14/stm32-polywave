@@ -7,6 +7,7 @@ CFILES += sound.c
 CFILES += oled.c
 CFILES += encoder.c
 CFILES += millis.c
+CFILES += utils.c
 #CFILES += api.c
 
 # TODO - you will need to edit these two lines!
