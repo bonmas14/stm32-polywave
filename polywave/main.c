@@ -24,22 +24,20 @@
 #define SAMPLE_ARR 1500
 #define SAMPLE_FREQ (72000000 / SAMPLE_ARR)
 
-#define BUFF_SIZE 128
+#define BUFF_SIZE 512
 
 void init_mcu(void);
 void init_timers(void);
 void run_timers(void);
 
-size_t current_page = 0;
-
-size_t read_index = 0;
+volatile size_t read_index = 0;
 bool sample_filled = false;
 
 uint8_t output_buffer[BUFF_SIZE];
 uint8_t sync_buffer[BUFF_SIZE];
 
-osc_t base = (osc_t) { .freq = NOTE_C3, .osc_enum = SAW };
-osc_t modulator = (osc_t) { .osc_enum = SAW };
+osc_t car = (osc_t) { .freq = NOTE_C4, .osc_enum = TRIANGLE };
+osc_t mod = (osc_t) { .freq = NOTE_C3, .osc_enum = TRIANGLE };
 
 int main(void) {
     init_mcu();
@@ -51,19 +49,16 @@ int main(void) {
 
     while (1) {
         freq += encoder_state();
-        modulator.freq = NOTE_C1 + freq;
-        base.freq = NOTE_C3 + freq * (1 << 2);
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-            base.phase = ((int32_t)osc_generate(&modulator) - 127);
-
-            uint32_t sample = osc_generate(&base);
-            //sample /= 1;
-            sync_buffer[i] = max(1, min(sample, 254));
+            int32_t sample = 0
+               + osc_generate(&car, osc_generate(&mod, 1000) * 3);
+                
+            sync_buffer[i] = max(1, min(sample / 2 + PWM_IDLE, 254));
         }
 
         sample_filled = true;

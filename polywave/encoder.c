@@ -7,7 +7,7 @@
 
 #include "millis.h"
 
-#define ANTISHUTTER_TIME 1
+#define ANTISHUTTER_TIME 10
 
 enum {
     IDLE,

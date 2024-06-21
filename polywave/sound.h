@@ -4,19 +4,15 @@
 #include <stdint.h>
 
 enum {
-    TRIANGE,
+    TRIANGLE,
     SAW,
     SQUARE
 };
 
 typedef struct {
     uint8_t osc_enum;
-
-    uint64_t time;
-
-    uint32_t freq;
-
-    int32_t phase;
+    int64_t time;
+    int32_t freq;
 } osc_t;
 
-uint32_t osc_generate(osc_t* osc);
+int32_t osc_generate(osc_t* osc, int32_t phase_shift);
