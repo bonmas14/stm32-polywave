@@ -9,6 +9,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/timer.h>
 
+#include "libopencm3/stm32/f1/gpio.h"
 #include "logo.h"
 #include "sound.h"
 #include "oled.h"
@@ -36,29 +37,38 @@ bool sample_filled = false;
 uint8_t output_buffer[BUFF_SIZE];
 uint8_t sync_buffer[BUFF_SIZE];
 
-osc_t car = (osc_t) { .freq = NOTE_C4, .osc_enum = TRIANGLE };
-osc_t mod = (osc_t) { .freq = NOTE_C3, .osc_enum = TRIANGLE };
+osc_t car = (osc_t) { .freq = NOTE_C3, .osc_enum = OSC_TRIANGLE };
+osc_t mod = (osc_t) { .freq = NOTE_C2, .osc_enum = OSC_TRIANGLE };
+osc_t amp = (osc_t) { .freq = NOTE_C4, .osc_enum = OSC_TRIANGLE };
+
+adsr_t base = (adsr_t) { .state_enum = ADSR_IDLE, .attack_time = 240, .attack_value = 24000, .decay_time = 6000, .sustain_value = 6000, .release_time = 4800 };
 
 int main(void) {
     init_mcu();
 
-    oled_write_rle(logo_rle);
-    oled_update();
-
-    int32_t freq = 0;
+    //oled_write_rle(logo_rle);
+    //oled_update();
+    
+    //  not using encoder as intended right now 
+    //int32_t freq = 0;
 
     while (1) {
-        freq += encoder_state();
+        //freq += encoder_state();
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-            int32_t sample = 0
-               + osc_generate(&car, osc_generate(&mod, 1000) * 3);
-                
-            sync_buffer[i] = max(1, min(sample / 2 + PWM_IDLE, 254));
+            adsr_update(&car, &base, !(gpio_port_read(GPIOB) & A_PIN));
+
+            int16_t sample = osc_generate(&car, osc_generate(&mod, 10) / 250);
+            //int16_t sample = osc_generate(&car, 0);
+
+            sample = osc_mul(sample, osc_generate(&amp, 1000));
+            sample = osc_mul(sample, base.current_value);
+
+            sync_buffer[i] = max(1, min(osc_to_8bit(sample) + PWM_IDLE, 254));
         }
 
         sample_filled = true;
@@ -92,7 +102,7 @@ void init_mcu(void) {
 
     init_timers();
     encoder_init();
-    oled_init();
+    //oled_init();
 
     nvic_enable_irq(NVIC_EXTI0_IRQ);
     nvic_set_priority(NVIC_EXTI0_IRQ, 0);
