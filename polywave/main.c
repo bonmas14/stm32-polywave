@@ -48,12 +48,11 @@ int main(void) {
 
     //oled_write_rle(logo_rle);
     //oled_update();
-    
-    //  not using encoder as intended right now 
-    //int32_t freq = 0;
+
+    int32_t freq = 0;
 
     while (1) {
-        //freq += encoder_state();
+        freq += encoder_state();
 
         if (sample_filled) {
             continue;
