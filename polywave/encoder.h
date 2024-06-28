@@ -5,8 +5,8 @@
 
 #include <libopencm3/stm32/gpio.h>
 
-
 #define ENCODER_PORT GPIOB
+#define ENC_BUTTON GPIO3
 #define A_PIN GPIO0
 #define B_PIN GPIO1
 

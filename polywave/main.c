@@ -12,7 +12,7 @@
 #include "libopencm3/stm32/f1/gpio.h"
 #include "logo.h"
 #include "sound.h"
-#include "oled.h"
+//#include "oled.h"  // we dont need oled right now (pins B8 B9)
 #include "encoder.h"
 #include "millis.h"
 #include "utils.h"
@@ -32,12 +32,12 @@ void init_timers(void);
 void run_timers(void);
 
 volatile size_t read_index = 0;
-bool sample_filled = false;
+volatile bool sample_filled = false;
 
 uint8_t output_buffer[BUFF_SIZE];
 uint8_t sync_buffer[BUFF_SIZE];
 
-osc_t car = (osc_t) { .freq = NOTE_C3, .osc_enum = OSC_TRIANGLE };
+osc_t car = (osc_t) { .freq = NOTE_C2, .osc_enum = OSC_TRIANGLE };
 osc_t mod = (osc_t) { .freq = NOTE_C2, .osc_enum = OSC_TRIANGLE };
 osc_t amp = (osc_t) { .freq = NOTE_C4, .osc_enum = OSC_TRIANGLE };
 
@@ -49,22 +49,30 @@ int main(void) {
     //oled_write_rle(logo_rle);
     //oled_update();
 
-    int32_t freq = 0;
+    int32_t offset = 0;
+    int32_t gate = 0;
 
     while (1) {
-        freq += encoder_state();
+        offset = offset + encoder_state() * 1;
+        
+        car.freq = NOTE_C2 + offset;
+        mod.freq = car.freq * 5;
+        amp.freq = car.freq * 2;
 
         if (sample_filled) {
             continue;
         }
 
         for (size_t i = 0; i < BUFF_SIZE; i++) {
-            adsr_update(&car, &base, !(gpio_port_read(GPIOB) & A_PIN));
+            gate = (car.time % 12000) < 3000 ? 1 : 0;
 
+            adsr_update(&car, &base, gate);
+
+            // FM
             int16_t sample = osc_generate(&car, osc_generate(&mod, 10) / 250);
-            //int16_t sample = osc_generate(&car, 0);
-
+            // AM
             sample = osc_mul(sample, osc_generate(&amp, 1000));
+            // ADSR
             sample = osc_mul(sample, base.current_value);
 
             sync_buffer[i] = max(1, min(osc_to_8bit(sample) + PWM_IDLE, 254));
@@ -79,10 +87,7 @@ void run_timers(void) {
     TIM3_CR1 |= TIM_CR1_CEN; 
 
     nvic_enable_irq(NVIC_TIM2_IRQ);
-    nvic_set_priority(NVIC_TIM2_IRQ, 1);
-
-    nvic_enable_irq(NVIC_TIM4_IRQ);
-    nvic_set_priority(NVIC_TIM4_IRQ, 1);
+    nvic_set_priority(NVIC_TIM2_IRQ, 0);
 }
 
 void init_mcu(void) {
@@ -103,12 +108,6 @@ void init_mcu(void) {
     encoder_init();
     //oled_init();
 
-    nvic_enable_irq(NVIC_EXTI0_IRQ);
-    nvic_set_priority(NVIC_EXTI0_IRQ, 0);
-
-    exti_select_source(EXTI0, ENCODER_PORT);
-    exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
-    exti_enable_request(EXTI0);
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
